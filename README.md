@@ -5,7 +5,7 @@
 ```scala
 trait SafeReplicator[T <: ReplicatedData] {
   def get()(implicit consistency: ReadConsistency): Future[Either[GetFailure, T]]
-  def update(initial: T)(modify: T => T)(implicit consistency: WriteConsistency): Future[Either[UpdateFailure, Unit]]
+  def update(modify: Option[T] => T)(implicit consistency: WriteConsistency): Future[Either[UpdateFailure, Unit]]
   def delete()(implicit consistency: WriteConsistency): Future[Either[DeleteFailure, Unit]]
   def subscribe(onStop: () => Unit = () => ())(onChanged: T => Unit)(implicit factory: ActorRefFactory): Unsubscribe
   def flushChanges(): Unit

@@ -40,36 +40,41 @@ class SafeReplicatorSpec extends WordSpec with ActorSpec with Matchers {
   }
 
   "proxy update" in new Scope {
-    val result = replicator.update(counter) { _.zero }
-    expectMsgPF() { case R.Update(`key`, `writeConsistency`, None) => () }
+    val modify: Option[GCounter] => GCounter = _ => counter
+    val result = replicator.update(modify)
+    expectMsg(R.Update(key, writeConsistency, None)(modify))
     lastSender ! R.UpdateSuccess(key, None)
     result.value shouldEqual Some(Success(Right(())))
   }
 
   "proxy update and reply with Failure" in new Scope {
-    val result = replicator.update(counter) { _.zero }
-    expectMsgPF() { case R.Update(`key`, `writeConsistency`, None) => () }
+    val modify: Option[GCounter] => GCounter = _ => counter
+    val result = replicator.update(modify)
+    expectMsg(R.Update(key, writeConsistency, None)(modify))
     lastSender ! R.ModifyFailure(key, "errorMsg", failure, None)
     result.value shouldEqual Some(Success(Left(UpdateFailure.Failure("errorMsg", failure))))
   }
 
   "proxy update and reply with Timeout" in new Scope {
-    val result = replicator.update(counter) { _.zero }
-    expectMsgPF() { case R.Update(`key`, `writeConsistency`, None) => () }
+    val modify: Option[GCounter] => GCounter = _ => counter
+    val result = replicator.update(modify)
+    expectMsg(R.Update(key, writeConsistency, None)(modify))
     lastSender ! R.UpdateTimeout(key, None)
     result.value shouldEqual Some(Success(Left(UpdateFailure.Timeout)))
   }
 
   "proxy update and reply with StoreFailure" in new Scope {
-    val result = replicator.update(counter) { _.zero }
-    expectMsgPF() { case R.Update(`key`, `writeConsistency`, None) => () }
+    val modify: Option[GCounter] => GCounter = _ => counter
+    val result = replicator.update(modify)
+    expectMsg(R.Update(key, writeConsistency, None)(modify))
     lastSender ! R.StoreFailure(key, None)
     result.value shouldEqual Some(Success(Left(UpdateFailure.StoreFailure)))
   }
 
   "proxy update and reply with Deleted" in new Scope {
-    val result = replicator.update(counter) { _.zero }
-    expectMsgPF() { case R.Update(`key`, `writeConsistency`, None) => () }
+    val modify: Option[GCounter] => GCounter = _ => counter
+    val result = replicator.update(modify)
+    expectMsg(R.Update(key, writeConsistency, None)(modify))
     lastSender ! R.DataDeleted(key, None)
     result.value shouldEqual Some(Success(Left(UpdateFailure.Deleted)))
   }

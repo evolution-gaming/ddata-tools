@@ -39,13 +39,12 @@ trait SafeReplicator[T <: ReplicatedData] {
     * The current data value for the key of the Update is passed as parameter to the modify function of the Update.
     * The function is supposed to return the new value of the data, which will then be replicated according to the given consistency level.
     *
-    * @param initial     If there is no current data the `initial` value will be passed to the `modify` function.
     * @param modify      The modify function is called by the Replicator actor and must therefore be a pure function
     *                    that only uses the data parameter and stable fields from enclosing scope.
     *                    It must for example not access the sender (sender()) reference of an enclosing actor.
     * @param consistency [[https://doc.akka.io/docs/akka/2.5.9/distributed-data.html#consistency]]
     */
-  def update(initial: T)(modify: T => T)(implicit consistency: WriteConsistency): Future[Either[UpdateFailure, Unit]]
+  def update(modify: Option[T] => T)(implicit consistency: WriteConsistency): Future[Either[UpdateFailure, Unit]]
 
   /**
     * [[https://doc.akka.io/docs/akka/2.5.9/distributed-data.html#delete]]
@@ -108,8 +107,8 @@ object SafeReplicator {
         }
       }
 
-      def update(initial: T)(modify: T => T)(implicit consistency: WriteConsistency) = {
-        val update = R.Update(key, initial, consistency)(modify)
+      def update(modify: Option[T] => T)(implicit consistency: WriteConsistency) = {
+        val update = R.Update(key, consistency, None)(modify)
         replicator.ask(update) map {
           case R.DataDeleted(`key`, _) => UpdateFailure.Deleted.asLeft
           case x                       => x.asInstanceOf[R.UpdateResponse[T]] match {
