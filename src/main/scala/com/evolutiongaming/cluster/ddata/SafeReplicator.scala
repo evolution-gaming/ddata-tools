@@ -169,7 +169,7 @@ object SafeReplicator {
   sealed trait UpdateFailure
 
   object UpdateFailure {
-    case class Failure(message: String, cause: Throwable) extends UpdateFailure
+    final case class Failure(message: String, cause: Throwable) extends UpdateFailure
     case object Timeout extends UpdateFailure
     case object StoreFailure extends UpdateFailure
     case object Deleted extends UpdateFailure
