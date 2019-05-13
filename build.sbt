@@ -14,7 +14,7 @@ bintrayOrganization := Some("evolutiongaming")
 
 scalaVersion := crossScalaVersions.value.last
 
-crossScalaVersions := Seq("2.11.12", "2.12.6")
+crossScalaVersions := Seq("2.12.8")
 
 scalacOptions ++= Seq(
   "-encoding", "UTF-8",
@@ -33,10 +33,10 @@ scalacOptions in (Compile,doc) ++= Seq("-groups", "-implicits", "-no-link-warnin
 resolvers += Resolver.bintrayRepo("evolutiongaming", "maven")
 
 libraryDependencies ++= Seq(
-  "com.typesafe.akka" %% "akka-distributed-data" % "2.5.14",
-  "com.typesafe.akka" %% "akka-testkit" % "2.5.14" % Test,
+  "com.typesafe.akka" %% "akka-distributed-data" % "2.5.22",
+  "com.typesafe.akka" %% "akka-testkit" % "2.5.22" % Test,
   "com.evolutiongaming" %% "executor-tools" % "1.0.1",
-  "org.scalatest" %% "scalatest" % "3.0.5" % Test)
+  "org.scalatest" %% "scalatest" % "3.0.7" % Test)
 
 licenses := Seq(("MIT", url("https://opensource.org/licenses/MIT")))
 
