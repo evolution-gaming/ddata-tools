@@ -3,12 +3,17 @@
 ### SafeReplicator - is a typesafe api for [DData replicator](https://doc.akka.io/docs/akka/2.5.9/distributed-data.html)
 
 ```scala
-trait SafeReplicator[T <: ReplicatedData] {
-  def get()(implicit consistency: ReadConsistency): Future[Either[GetFailure, T]]
-  def update(modify: Option[T] => T)(implicit consistency: WriteConsistency): Future[Either[UpdateFailure, Unit]]
-  def delete()(implicit consistency: WriteConsistency): Future[Either[DeleteFailure, Unit]]
-  def subscribe(onStop: () => Unit = () => ())(onChanged: T => Unit)(implicit factory: ActorRefFactory): Unsubscribe
-  def flushChanges(): Unit
+trait SafeReplicator[F[_], A <: ReplicatedData] {
+
+  def get(implicit consistency: ReadConsistency): F[Option[A]]
+  
+  def update(modify: Option[A] => A)(implicit consistency: WriteConsistency): F[Unit]
+  
+  def delete(implicit consistency: WriteConsistency): F[Boolean]
+  
+  def subscribe(onStop: F[Unit],onChanged: A => F[Unit])(implicit factory: ActorRefFactory,executor: ExecutionContext): Resource[F, Unit]
+
+  def flushChanges: F[Unit]
 }
 ```
 
@@ -17,5 +22,5 @@ trait SafeReplicator[T <: ReplicatedData] {
 ```scala
 resolvers += Resolver.bintrayRepo("evolutiongaming", "maven")
 
-libraryDependencies += "com.evolutiongaming" %% "ddata-tools" % "0.0.1"
+libraryDependencies += "com.evolutiongaming" %% "ddata-tools" % "2.0.0"
 ```

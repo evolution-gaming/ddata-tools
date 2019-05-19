@@ -1,3 +1,5 @@
+import Dependencies._
+
 name := "ddata-tools"
 
 organization := "com.evolutiongaming"
@@ -16,15 +18,20 @@ scalaVersion := crossScalaVersions.value.last
 
 crossScalaVersions := Seq("2.12.8")
 
-scalacOptions in (Compile,doc) ++= Seq("-no-link-warnings")
+scalacOptions in(Compile, doc) ++= Seq("-no-link-warnings")
 
 resolvers += Resolver.bintrayRepo("evolutiongaming", "maven")
 
 libraryDependencies ++= Seq(
-  "com.typesafe.akka"   %% "akka-distributed-data" % "2.5.22",
-  "com.typesafe.akka"   %% "akka-testkit"          % "2.5.22" % Test,
-  "com.evolutiongaming" %% "executor-tools"        % "1.0.1",
-  "org.scalatest"       %% "scalatest"             % "3.0.7"  % Test)
+  Akka.actor,
+  Akka.cluster,
+  Akka.`distributed-data`,
+  Akka.testkit % Test,
+  Cats.core,
+  Cats.effect,
+  `executor-tools`,
+  `cats-helper`,
+  scalatest % Test)
 
 licenses := Seq(("MIT", url("https://opensource.org/licenses/MIT")))
 
