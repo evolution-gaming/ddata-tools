@@ -5,6 +5,7 @@ import akka.cluster.ddata.{GCounter, GCounterKey, Replicator => R}
 import cats.effect.IO
 import cats.implicits._
 import com.evolutiongaming.cluster.ddata.IOSuite._
+import com.evolutiongaming.cluster.ddata.SafeReplicator.Metrics
 import org.scalatest.{Matchers, WordSpec}
 
 import scala.concurrent.duration._
@@ -139,7 +140,7 @@ class SafeReplicatorSpec extends WordSpec with ActorSpec with Matchers {
     val key = GCounterKey("key")
     val counter = GCounter.empty
     val onChanged = (data: GCounter) => IO { testActor ! data }
-    val replicator = SafeReplicator[IO, GCounter](key, 5.seconds, testActor)
+    val replicator = SafeReplicator[IO, GCounter](key, 5.seconds, testActor).withMetrics(Metrics.empty)
   }
 
   private val failure = new RuntimeException with NoStackTrace

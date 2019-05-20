@@ -5,13 +5,15 @@ import akka.cluster.ddata.Replicator.{ReadConsistency, WriteConsistency}
 import akka.cluster.ddata.{DistributedData, Key, ReplicatedData, Replicator => R}
 import akka.pattern.ask
 import akka.util.Timeout
-import cats.effect.{Resource, Sync}
+import cats.Applicative
+import cats.effect.{Clock, Resource, Sync}
 import cats.implicits._
+import com.evolutiongaming.catshelper.ClockHelper._
 import com.evolutiongaming.catshelper.{FromFuture, ToFuture}
 import com.evolutiongaming.cluster.ddata.{ReplicatorError => E}
 
-import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * Typesafe api for [[https://doc.akka.io/docs/akka/2.5.22/distributed-data.html]]
@@ -202,6 +204,66 @@ object SafeReplicator {
 
       def flushChanges = {
         Sync[F].delay { replicator ! R.FlushChanges }
+      }
+    }
+  }
+
+
+  trait Metrics[F[_]] {
+
+    def latency(name: String, latency: Long): F[Unit]
+  }
+
+  object Metrics {
+
+    def empty[F[_] : Applicative]: Metrics[F] = new Metrics[F] {
+      def latency(name: String, latency: Long) = ().pure[F]
+    }
+  }
+
+
+  implicit class SafeReplicatorOps[F[_], A <: ReplicatedData](val self: SafeReplicator[F, A]) extends AnyVal {
+
+    def withMetrics(metrics: Metrics[F])(implicit F: Sync[F], clock: Clock[F]): SafeReplicator[F, A] = {
+
+      def latency[B](name: String)(fa: F[B]): F[B] = {
+        for {
+          start   <- Clock[F].millis
+          b       <- fa.attempt
+          end     <- Clock[F].millis
+          latency  = end - start
+          _       <- metrics.latency(name, latency)
+          b       <- b.fold(_.raiseError[F, B], _.pure[F])
+        } yield b
+      }
+
+      new SafeReplicator[F, A] {
+
+        def get(implicit consistency: ReadConsistency) = {
+          latency("get") { self.get }
+        }
+
+        def update(modify: Option[A] => A)(implicit consistency: WriteConsistency) = {
+          latency("update") { self.update(modify) }
+        }
+
+        def delete(implicit consistency: WriteConsistency) = {
+          latency("delete") { self.delete }
+        }
+
+        def subscribe(
+          onStop: F[Unit],
+          onChanged: A => F[Unit])(implicit
+          factory: ActorRefFactory,
+          executor: ExecutionContext
+        ) = {
+          val result = latency("subscribe") { self.subscribe(onStop, onChanged).allocated }
+          Resource(result)
+        }
+
+        def flushChanges = {
+          latency("flushChanges") { self.flushChanges }
+        }
       }
     }
   }
