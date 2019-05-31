@@ -2,7 +2,7 @@ package com.evolutiongaming.cluster.ddata
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorRefFactory, ActorSystem, Props}
 import akka.cluster.ddata.Replicator.{ReadConsistency, WriteConsistency}
-import akka.cluster.ddata.{DistributedData, Key, ReplicatedData, Replicator => R}
+import akka.cluster.ddata.{DistributedData, Flag, GCounter, GSet, Key, LWWMap, ManyVersionVector, ORMap, ORMultiMap, ORSet, OneVersionVector, PNCounter, PNCounterMap, ReplicatedData, VersionVector, Replicator => R}
 import akka.pattern.ask
 import akka.util.Timeout
 import cats.Applicative
@@ -212,19 +212,79 @@ object SafeReplicator {
   trait Metrics[F[_]] {
 
     def latency(name: String, latency: Long): F[Unit]
+
+    def size(size: Long): F[Unit]
   }
 
   object Metrics {
 
     def empty[F[_] : Applicative]: Metrics[F] = new Metrics[F] {
+
       def latency(name: String, latency: Long) = ().pure[F]
+
+      def size(size: Long) = ().pure[F]
+    }
+
+
+    trait DataSize[A <: ReplicatedData] {
+      def apply(): Option[A => Long]
+    }
+
+    object DataSize {
+
+      implicit val gCounterDataSize         : DataSize[GCounter]          = noSize
+      implicit val gSetDataSize             : DataSize[GSet[_]]           = size { a: GSet[_] => a.size }
+      implicit val lwwMapDataSize           : DataSize[LWWMap[_, _]]      = size { a: LWWMap[_, _] => a.size }
+      implicit val orMapDataSize            : DataSize[ORMap[_, _]]       = size { a: ORMap[_, _] => a.size }
+      implicit val orMultiMapDataSize       : DataSize[ORMultiMap[_, _]]  = size { a: ORMultiMap[_, _] => a.size }
+      implicit val orSetDataSize            : DataSize[ORSet[_]]          = size { a: ORSet[_] => a.size }
+      implicit val pnCounterDataSize        : DataSize[PNCounter]         = noSize
+      implicit val pnCounterMapDataSize     : DataSize[PNCounterMap[_]]   = size { a: PNCounterMap[_] => a.size }
+      implicit val flagDataSize             : DataSize[Flag]              = noSize
+      implicit val versionVectorDataSize    : DataSize[VersionVector]     = noSize
+      implicit val oneVersionVectorDataSize : DataSize[OneVersionVector]  = noSize
+      implicit val manyVersionVectorDataSize: DataSize[ManyVersionVector] = size { a: ManyVersionVector => a.versions.size }
+
+      def noSize[A <: ReplicatedData]: DataSize[A] = () => none
+
+      private def size[A <: ReplicatedData](f: A => Int): DataSize[A] = () => ((a: A) => f(a).toLong).some
     }
   }
 
 
   implicit class SafeReplicatorOps[F[_], A <: ReplicatedData](val self: SafeReplicator[F, A]) extends AnyVal {
 
-    def withMetrics(metrics: Metrics[F])(implicit F: Sync[F], clock: Clock[F]): SafeReplicator[F, A] = {
+    def withMetrics(
+      metrics: Metrics[F],
+      refFactory: ActorRefFactory)(implicit
+      dataSize: Metrics.DataSize[A],
+      F: Sync[F],
+      clock: Clock[F]
+    ): Resource[F, SafeReplicator[F, A]] = {
+
+      val subscription = for {
+        dataSize <- dataSize()
+      } yield {
+        val onChanged = (a: A) => {
+          val size = dataSize(a)
+          metrics.size(size)
+        }
+        self.subscribe(().pure[F], onChanged)(refFactory, refFactory.dispatcher)
+      }
+
+      for {
+        _ <- subscription getOrElse Resource.liftF(().pure[F])
+      } yield {
+        withMetricsNoSize(metrics)
+      }
+    }
+
+
+    def withMetricsNoSize(
+      metrics: Metrics[F])(implicit
+      F: Sync[F],
+      clock: Clock[F]
+    ): SafeReplicator[F, A] = {
 
       def latency[B](name: String)(fa: F[B]): F[B] = {
         for {

@@ -140,7 +140,7 @@ class SafeReplicatorSpec extends WordSpec with ActorSpec with Matchers {
     val key = GCounterKey("key")
     val counter = GCounter.empty
     val onChanged = (data: GCounter) => IO { testActor ! data }
-    val replicator = SafeReplicator[IO, GCounter](key, 5.seconds, testActor).withMetrics(Metrics.empty)
+    val (replicator, _) = SafeReplicator[IO, GCounter](key, 5.seconds, testActor).withMetrics(Metrics.empty, system).allocated.unsafeRunSync()
   }
 
   private val failure = new RuntimeException with NoStackTrace
