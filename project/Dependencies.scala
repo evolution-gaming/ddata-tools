@@ -4,16 +4,16 @@ object Dependencies {
 
   val `executor-tools` = "com.evolutiongaming" %% "executor-tools" % "1.0.1"
   val scalatest        = "org.scalatest"       %% "scalatest"      % "3.0.7"
-  val `cats-helper`    = "com.evolutiongaming" %% "cats-helper"    % "0.0.6"
+  val `cats-helper`    = "com.evolutiongaming" %% "cats-helper"    % "0.0.12"
 
   object Cats {
     private val version = "1.6.0"
     val core   = "org.typelevel" %% "cats-core" % version
-    val effect = "org.typelevel" %% "cats-effect" % "1.2.0"
+    val effect = "org.typelevel" %% "cats-effect" % "1.3.1"
   }
 
   object Akka {
-    private val version = "2.5.22"
+    private val version = "2.5.23"
     val actor              = "com.typesafe.akka" %% "akka-actor"            % version
     val cluster            = "com.typesafe.akka" %% "akka-cluster"          % version
     val `distributed-data` = "com.typesafe.akka" %% "akka-distributed-data" % version

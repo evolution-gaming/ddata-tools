@@ -226,28 +226,33 @@ object SafeReplicator {
     }
 
 
-    trait DataSize[A <: ReplicatedData] {
-      def apply(): Option[A => Long]
+    trait DataMetrics[F[_], A <: ReplicatedData] {
+
+      def apply(metrics: Metrics[F], a: A): F[Unit]
     }
 
-    object DataSize {
+    object DataMetrics {
 
-      implicit val gCounterDataSize         : DataSize[GCounter]          = noSize
-      implicit val gSetDataSize             : DataSize[GSet[_]]           = size { a: GSet[_] => a.size }
-      implicit val lwwMapDataSize           : DataSize[LWWMap[_, _]]      = size { a: LWWMap[_, _] => a.size }
-      implicit val orMapDataSize            : DataSize[ORMap[_, _]]       = size { a: ORMap[_, _] => a.size }
-      implicit val orMultiMapDataSize       : DataSize[ORMultiMap[_, _]]  = size { a: ORMultiMap[_, _] => a.size }
-      implicit val orSetDataSize            : DataSize[ORSet[_]]          = size { a: ORSet[_] => a.size }
-      implicit val pnCounterDataSize        : DataSize[PNCounter]         = noSize
-      implicit val pnCounterMapDataSize     : DataSize[PNCounterMap[_]]   = size { a: PNCounterMap[_] => a.size }
-      implicit val flagDataSize             : DataSize[Flag]              = noSize
-      implicit val versionVectorDataSize    : DataSize[VersionVector]     = noSize
-      implicit val oneVersionVectorDataSize : DataSize[OneVersionVector]  = noSize
-      implicit val manyVersionVectorDataSize: DataSize[ManyVersionVector] = size { a: ManyVersionVector => a.versions.size }
+      implicit def gCounterDataSize         [F[_] : Applicative]: DataMetrics[F, GCounter]          = empty
+      implicit def gSetDataSize             [F[_] : Applicative]: DataMetrics[F, GSet[_]]           = size { a: GSet[_] => a.size }
+      implicit def lwwMapDataSize           [F[_] : Applicative]: DataMetrics[F, LWWMap[_, _]]      = size { a: LWWMap[_, _] => a.size }
+      implicit def orMapDataSize            [F[_] : Applicative]: DataMetrics[F, ORMap[_, _]]       = size { a: ORMap[_, _] => a.size }
+      implicit def orMultiMapDataSize       [F[_] : Applicative]: DataMetrics[F, ORMultiMap[_, _]]  = size { a: ORMultiMap[_, _] => a.size }
+      implicit def orSetDataSize            [F[_] : Applicative]: DataMetrics[F, ORSet[_]]          = size { a: ORSet[_] => a.size }
+      implicit def pnCounterDataSize        [F[_] : Applicative]: DataMetrics[F, PNCounter]         = empty
+      implicit def pnCounterMapDataSize     [F[_] : Applicative]: DataMetrics[F, PNCounterMap[_]]   = size { a: PNCounterMap[_] => a.size }
+      implicit def flagDataSize             [F[_] : Applicative]: DataMetrics[F, Flag]              = empty
+      implicit def versionVectorDataSize    [F[_] : Applicative]: DataMetrics[F, VersionVector]     = empty
+      implicit def oneVersionVectorDataSize [F[_] : Applicative]: DataMetrics[F, OneVersionVector]  = empty
+      implicit def manyVersionVectorDataSize[F[_] : Applicative]: DataMetrics[F, ManyVersionVector] = size { a: ManyVersionVector => a.versions.size }
 
-      def noSize[A <: ReplicatedData]: DataSize[A] = () => none
+      def empty[F[_] : Applicative, A <: ReplicatedData]: DataMetrics[F, A] = new DataMetrics[F, A] {
+        def apply(metrics: Metrics[F], a: A) = ().pure[F]
+      }
 
-      private def size[A <: ReplicatedData](f: A => Int): DataSize[A] = () => ((a: A) => f(a).toLong).some
+      private def size[F[_], A <: ReplicatedData](size: A => Int): DataMetrics[F, A] = new DataMetrics[F, A] {
+        def apply(metrics: Metrics[F], a: A) = metrics.size(size(a).toLong)
+      }
     }
   }
 
@@ -257,34 +262,10 @@ object SafeReplicator {
     def withMetrics(
       metrics: Metrics[F],
       refFactory: ActorRefFactory)(implicit
-      dataSize: Metrics.DataSize[A],
+      dataMetrics: Metrics.DataMetrics[F, A],
       F: Sync[F],
       clock: Clock[F]
     ): Resource[F, SafeReplicator[F, A]] = {
-
-      val subscription = for {
-        dataSize <- dataSize()
-      } yield {
-        val onChanged = (a: A) => {
-          val size = dataSize(a)
-          metrics.size(size)
-        }
-        self.subscribe(().pure[F], onChanged)(refFactory, refFactory.dispatcher)
-      }
-
-      for {
-        _ <- subscription getOrElse Resource.liftF(().pure[F])
-      } yield {
-        withMetricsNoSize(metrics)
-      }
-    }
-
-
-    def withMetricsNoSize(
-      metrics: Metrics[F])(implicit
-      F: Sync[F],
-      clock: Clock[F]
-    ): SafeReplicator[F, A] = {
 
       def latency[B](name: String)(fa: F[B]): F[B] = {
         for {
@@ -297,32 +278,39 @@ object SafeReplicator {
         } yield b
       }
 
-      new SafeReplicator[F, A] {
+      val onChanged = (a: A) => dataMetrics(metrics, a)
 
-        def get(implicit consistency: ReadConsistency) = {
-          latency("get") { self.get }
-        }
+      for {
+        _ <- self.subscribe(().pure[F], onChanged)(refFactory, refFactory.dispatcher)
+      } yield {
 
-        def update(modify: Option[A] => A)(implicit consistency: WriteConsistency) = {
-          latency("update") { self.update(modify) }
-        }
+        new SafeReplicator[F, A] {
 
-        def delete(implicit consistency: WriteConsistency) = {
-          latency("delete") { self.delete }
-        }
+          def get(implicit consistency: ReadConsistency) = {
+            latency("get") { self.get }
+          }
 
-        def subscribe(
-          onStop: F[Unit],
-          onChanged: A => F[Unit])(implicit
-          factory: ActorRefFactory,
-          executor: ExecutionContext
-        ) = {
-          val result = latency("subscribe") { self.subscribe(onStop, onChanged).allocated }
-          Resource(result)
-        }
+          def update(modify: Option[A] => A)(implicit consistency: WriteConsistency) = {
+            latency("update") { self.update(modify) }
+          }
 
-        def flushChanges = {
-          latency("flushChanges") { self.flushChanges }
+          def delete(implicit consistency: WriteConsistency) = {
+            latency("delete") { self.delete }
+          }
+
+          def subscribe(
+            onStop: F[Unit],
+            onChanged: A => F[Unit])(implicit
+            factory: ActorRefFactory,
+            executor: ExecutionContext
+          ) = {
+            val result = latency("subscribe") { self.subscribe(onStop, onChanged).allocated }
+            Resource(result)
+          }
+
+          def flushChanges = {
+            latency("flushChanges") { self.flushChanges }
+          }
         }
       }
     }
