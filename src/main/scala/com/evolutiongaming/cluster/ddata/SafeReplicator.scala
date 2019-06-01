@@ -233,18 +233,24 @@ object SafeReplicator {
 
     object DataMetrics {
 
-      implicit def gCounterDataSize         [F[_] : Applicative]: DataMetrics[F, GCounter]          = empty
-      implicit def gSetDataSize             [F[_] : Applicative]: DataMetrics[F, GSet[_]]           = size { a: GSet[_] => a.size }
-      implicit def lwwMapDataSize           [F[_] : Applicative]: DataMetrics[F, LWWMap[_, _]]      = size { a: LWWMap[_, _] => a.size }
-      implicit def orMapDataSize            [F[_] : Applicative]: DataMetrics[F, ORMap[_, _]]       = size { a: ORMap[_, _] => a.size }
-      implicit def orMultiMapDataSize       [F[_] : Applicative]: DataMetrics[F, ORMultiMap[_, _]]  = size { a: ORMultiMap[_, _] => a.size }
-      implicit def orSetDataSize            [F[_] : Applicative]: DataMetrics[F, ORSet[_]]          = size { a: ORSet[_] => a.size }
-      implicit def pnCounterDataSize        [F[_] : Applicative]: DataMetrics[F, PNCounter]         = empty
-      implicit def pnCounterMapDataSize     [F[_] : Applicative]: DataMetrics[F, PNCounterMap[_]]   = size { a: PNCounterMap[_] => a.size }
-      implicit def flagDataSize             [F[_] : Applicative]: DataMetrics[F, Flag]              = empty
-      implicit def versionVectorDataSize    [F[_] : Applicative]: DataMetrics[F, VersionVector]     = empty
-      implicit def oneVersionVectorDataSize [F[_] : Applicative]: DataMetrics[F, OneVersionVector]  = empty
+      implicit def gCounterDataSize[F[_] : Applicative]: DataMetrics[F, GCounter] = empty
+      implicit def gSetDataSize[F[_] : Applicative, A]: DataMetrics[F, GSet[A]] = size { a: GSet[A] => a.size }
+
+      implicit def lwwMapDataSize[F[_] : Applicative, K, V]: DataMetrics[F, LWWMap[K, V]] = size { a: LWWMap[K, V] => a.size }
+
+      implicit def orMapDataSize[F[_] : Applicative, K, V <: ReplicatedData]: DataMetrics[F, ORMap[K, V]] = size { a: ORMap[_, _] => a.size }
+      implicit def orMultiMapDataSize[F[_] : Applicative, K, V]: DataMetrics[F, ORMultiMap[K, V]] = size { a: ORMultiMap[K, V] => a.size }
+      implicit def orSetDataSize[F[_] : Applicative, A]: DataMetrics[F, ORSet[A]] = size { a: ORSet[A] => a.size }
+
+      implicit def pnCounterDataSize[F[_] : Applicative]: DataMetrics[F, PNCounter] = empty
+      implicit def pnCounterMapDataSize[F[_] : Applicative, A]: DataMetrics[F, PNCounterMap[A]] = size { a: PNCounterMap[A] => a.size }
+
+      implicit def flagDataSize[F[_] : Applicative]: DataMetrics[F, Flag] = empty
+
+      implicit def versionVectorDataSize[F[_] : Applicative]: DataMetrics[F, VersionVector] = empty
+      implicit def oneVersionVectorDataSize[F[_] : Applicative]: DataMetrics[F, OneVersionVector] = empty
       implicit def manyVersionVectorDataSize[F[_] : Applicative]: DataMetrics[F, ManyVersionVector] = size { a: ManyVersionVector => a.versions.size }
+
 
       def empty[F[_] : Applicative, A <: ReplicatedData]: DataMetrics[F, A] = new DataMetrics[F, A] {
         def apply(metrics: Metrics[F], a: A) = ().pure[F]
