@@ -2,10 +2,11 @@ package com.evolutiongaming.cluster.ddata
 
 import akka.cluster.ddata.Replicator.{ReadLocal, WriteLocal}
 import akka.cluster.ddata.{GCounter, GCounterKey, Replicator => R}
-import cats.effect.IO
+import cats.effect.{Clock, IO}
 import cats.implicits._
 import com.evolutiongaming.cluster.ddata.IOSuite._
 import com.evolutiongaming.cluster.ddata.SafeReplicator.Metrics
+import com.evolutiongaming.smetrics.{CollectorRegistry, MeasureDuration}
 import org.scalatest.{Matchers, WordSpec}
 
 import scala.concurrent.duration._
@@ -141,7 +142,13 @@ class SafeReplicatorSpec extends WordSpec with ActorSpec with Matchers {
     val counter = GCounter.empty
     val onChanged = (data: GCounter) => IO { testActor ! data }
     val replicator = {
-      val (replicator, _) = SafeReplicator[IO, GCounter](key, 5.seconds, testActor).withMetrics(Metrics.empty, system).allocated.unsafeRunSync()
+      implicit val measureDuration = MeasureDuration.fromClock(Clock[IO])
+      val resource = for {
+        metrics    <- Metrics.of(CollectorRegistry.empty[IO])
+        replicator <- SafeReplicator[IO, GCounter](key, 5.seconds, testActor).withMetrics(metrics("ddata"), system)
+      } yield replicator
+
+      val (replicator, _) = resource.allocated.unsafeRunSync()
       expectMsgType[R.Subscribe[GCounter]].key shouldEqual key
       replicator
     }

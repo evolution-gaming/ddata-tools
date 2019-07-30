@@ -5,12 +5,13 @@ import akka.cluster.ddata.Replicator.{ReadConsistency, WriteConsistency}
 import akka.cluster.ddata.{DistributedData, Flag, GCounter, GSet, Key, LWWMap, ManyVersionVector, ORMap, ORMultiMap, ORSet, OneVersionVector, PNCounter, PNCounterMap, ReplicatedData, VersionVector, Replicator => R}
 import akka.pattern.ask
 import akka.util.Timeout
-import cats.Applicative
-import cats.effect.{Clock, Resource, Sync}
+import cats.effect.{Resource, Sync}
 import cats.implicits._
-import com.evolutiongaming.catshelper.ClockHelper._
+import cats.{Applicative, Monad}
 import com.evolutiongaming.catshelper.{FromFuture, ToFuture}
 import com.evolutiongaming.cluster.ddata.{ReplicatorError => E}
+import com.evolutiongaming.smetrics.MetricsHelper._
+import com.evolutiongaming.smetrics._
 
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
@@ -211,18 +212,64 @@ object SafeReplicator {
 
   trait Metrics[F[_]] {
 
-    def latency(name: String, latency: Long): F[Unit]
+    def latency(name: String, latency: FiniteDuration): F[Unit]
 
     def size(size: Long): F[Unit]
   }
 
   object Metrics {
 
-    def empty[F[_] : Applicative]: Metrics[F] = new Metrics[F] {
+    def empty[F[_] : Applicative]: Metrics[F] = const(().pure[F])
 
-      def latency(name: String, latency: Long) = ().pure[F]
 
-      def size(size: Long) = ().pure[F]
+    def const[F[_]](unit: F[Unit]): Metrics[F] = new Metrics[F] {
+
+      def latency(name: String, latency: FiniteDuration) = unit
+
+      def size(size: Long) = unit
+    }
+
+
+    type Prefix = String
+
+    object Prefix {
+      val Empty: Prefix = "ddata"
+    }
+
+    def of[F[_] : Monad](
+      registry: CollectorRegistry[F],
+      prefix: Prefix = Prefix.Empty
+    ): Resource[F, String => SafeReplicator.Metrics[F]] = {
+
+      val latencySummary = registry.summary(
+        name = s"${ prefix }_latency",
+        help = "Latency in seconds",
+        quantiles = Quantiles(
+          Quantile(0.9, 0.05),
+          Quantile(0.99, 0.005)),
+        labels = LabelNames("key", "name"))
+
+      val sizeGauge = registry.gauge(
+        name = s"${ prefix }_size",
+        help = "Size of distributed data",
+        labels = LabelNames("key"))
+
+      for {
+        latencySummary <- latencySummary
+        sizeGauge      <- sizeGauge
+      } yield {
+        key: String =>
+          new SafeReplicator.Metrics[F] {
+
+            def latency(name: String, latency: FiniteDuration) = {
+              latencySummary.labels(key, name).observe(latency.toNanos.nanosToSeconds)
+            }
+
+            def size(size: Long) = {
+              sizeGauge.labels(key).set(size.toDouble)
+            }
+          }
+      }
     }
 
 
@@ -270,17 +317,16 @@ object SafeReplicator {
       refFactory: ActorRefFactory)(implicit
       dataMetrics: Metrics.DataMetrics[F, A],
       F: Sync[F],
-      clock: Clock[F]
+      measureDuration: MeasureDuration[F]
     ): Resource[F, SafeReplicator[F, A]] = {
 
       def latency[B](name: String)(fa: F[B]): F[B] = {
         for {
-          start   <- Clock[F].millis
-          b       <- fa.attempt
-          end     <- Clock[F].millis
-          latency  = end - start
-          _       <- metrics.latency(name, latency)
-          b       <- b.fold(_.raiseError[F, B], _.pure[F])
+          d <- measureDuration.start
+          b <- fa.attempt
+          d <- d
+          _ <- metrics.latency(name, d)
+          b <- b.raiseOrPure[F]
         } yield b
       }
 

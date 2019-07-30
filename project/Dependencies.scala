@@ -4,7 +4,8 @@ object Dependencies {
 
   val `executor-tools` = "com.evolutiongaming" %% "executor-tools" % "1.0.1"
   val scalatest        = "org.scalatest"       %% "scalatest"      % "3.0.8"
-  val `cats-helper`    = "com.evolutiongaming" %% "cats-helper"    % "0.0.18"
+  val `cats-helper`    = "com.evolutiongaming" %% "cats-helper"    % "0.0.23"
+  val smetrics         = "com.evolutiongaming" %% "smetrics"       % "0.0.4"
 
   object Cats {
     private val version = "1.6.1"
