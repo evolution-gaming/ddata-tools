@@ -6,12 +6,17 @@
 trait SafeReplicator[F[_], A <: ReplicatedData] {
 
   def get(implicit consistency: ReadConsistency): F[Option[A]]
-  
+
   def update(modify: Option[A] => A)(implicit consistency: WriteConsistency): F[Unit]
-  
+
   def delete(implicit consistency: WriteConsistency): F[Boolean]
-  
-  def subscribe(onStop: F[Unit],onChanged: A => F[Unit])(implicit factory: ActorRefFactory, executor: ExecutionContext): Resource[F, Unit]
+
+  def subscribe(
+    onStop: F[Unit],
+    onChanged: A => F[Unit])(implicit
+    factory: ActorRefFactory,
+    executor: ExecutionContext
+  ): Resource[F, Unit]
 
   def flushChanges: F[Unit]
 }
@@ -22,5 +27,5 @@ trait SafeReplicator[F[_], A <: ReplicatedData] {
 ```scala
 resolvers += Resolver.bintrayRepo("evolutiongaming", "maven")
 
-libraryDependencies += "com.evolutiongaming" %% "ddata-tools" % "2.0.3"
+libraryDependencies += "com.evolutiongaming" %% "ddata-tools" % "2.0.5"
 ```
