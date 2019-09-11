@@ -326,7 +326,7 @@ object SafeReplicator {
           b <- fa.attempt
           d <- d
           _ <- metrics.latency(name, d)
-          b <- b.raiseOrPure[F]
+          b <- b.liftTo[F]
         } yield b
       }
 
