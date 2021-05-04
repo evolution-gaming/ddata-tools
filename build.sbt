@@ -8,19 +8,17 @@ homepage := Some(new URL("http://github.com/evolution-gaming/ddata-tools"))
 
 startYear := Some(2018)
 
-organizationName := "Evolution Gaming"
+organizationName := "Evolution"
 
 organizationHomepage := Some(url("http://evolutiongaming.com"))
 
-bintrayOrganization := Some("evolutiongaming")
+scalaVersion := crossScalaVersions.value.head
 
-scalaVersion := crossScalaVersions.value.last
+crossScalaVersions := Seq("2.13.5", "2.12.13")
 
-crossScalaVersions := Seq("2.12.10", "2.13.0")
+Compile / doc / scalacOptions ++= Seq("-no-link-warnings")
 
-scalacOptions in(Compile, doc) ++= Seq("-no-link-warnings")
-
-resolvers += Resolver.bintrayRepo("evolutiongaming", "maven")
+publishTo := Some(Resolver.evolutionReleases)
 
 libraryDependencies ++= Seq(
   Akka.actor,
@@ -37,3 +35,5 @@ libraryDependencies ++= Seq(
 licenses := Seq(("MIT", url("https://opensource.org/licenses/MIT")))
 
 releaseCrossBuild := true
+
+scalacOptsFailOnWarn := Some(false)

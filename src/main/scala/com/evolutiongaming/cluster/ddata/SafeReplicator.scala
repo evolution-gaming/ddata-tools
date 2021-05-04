@@ -115,9 +115,10 @@ object SafeReplicator {
         val get = R.Get(key, consistency)
         askF(get).flatMap {
           case a: R.GetResponse[_] => a.asInstanceOf[R.GetResponse[A]] match {
-            case a: R.GetSuccess[A] => a.dataValue.some.pure[F]
-            case _: R.NotFound[A]   => none[A].pure[F]
-            case _: R.GetFailure[A] => E.getFailure.raiseError[F, Option[A]]
+            case a: R.GetSuccess[A]     => a.dataValue.some.pure[F]
+            case _: R.NotFound[A]       => none[A].pure[F]
+            case _: R.GetDataDeleted[A] => E.dataDeleted.raiseError[F, Option[A]]
+            case _: R.GetFailure[A]     => E.getFailure.raiseError[F, Option[A]]
           }
           case _: R.DataDeleted[_] => E.dataDeleted.raiseError[F, Option[A]]
           case a                   => E.unknown(s"unknown reply $a").raiseError[F, Option[A]]
@@ -129,10 +130,11 @@ object SafeReplicator {
         val update = R.Update(key, consistency, None)(modify)
         askF(update).flatMap {
           case a: R.UpdateResponse[_] => a.asInstanceOf[R.UpdateResponse[A]] match {
-            case _: R.UpdateSuccess[A] => ().pure[F]
-            case _: R.UpdateTimeout[A] => E.timeout.raiseError[F, Unit]
-            case a: R.ModifyFailure[A] => E.modifyFailure(a.errorMessage, a.cause).raiseError[F, Unit]
-            case _: R.StoreFailure[A]  => E.storeFailure.raiseError[F, Unit]
+            case _: R.UpdateSuccess[A]     => ().pure[F]
+            case _: R.UpdateTimeout[A]     => E.timeout.raiseError[F, Unit]
+            case a: R.ModifyFailure[A]     => E.modifyFailure(a.errorMessage, a.cause).raiseError[F, Unit]
+            case _: R.StoreFailure[A]      => E.storeFailure.raiseError[F, Unit]
+            case _: R.UpdateDataDeleted[_] => E.dataDeleted.raiseError[F, Unit]
           }
           case _: R.DataDeleted[_]    => E.dataDeleted.raiseError[F, Unit]
           case a                      => E.unknown(s"unknown reply $a").raiseError[F, Unit]
