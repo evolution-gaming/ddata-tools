@@ -5,9 +5,10 @@ import akka.cluster.ddata.{GCounter, GCounterKey, Replicator => R}
 import cats.effect.{Clock, IO}
 import cats.effect.unsafe.implicits.global
 import cats.implicits._
+import com.evolutiongaming.catshelper.MeasureDuration
 import com.evolutiongaming.cluster.ddata.IOSuite._
 import com.evolutiongaming.cluster.ddata.SafeReplicator.Metrics
-import com.evolutiongaming.smetrics.{CollectorRegistry, MeasureDuration}
+import com.evolutiongaming.smetrics.CollectorRegistry
 import org.scalatest.{Matchers, WordSpec}
 
 import scala.concurrent.duration._
@@ -146,7 +147,7 @@ class SafeReplicatorSpec extends WordSpec with ActorSpec with Matchers {
       implicit val measureDuration = MeasureDuration.fromClock(Clock[IO])
       val resource = for {
         metrics    <- Metrics.of(CollectorRegistry.empty[IO])
-        replicator <- SafeReplicator[IO, GCounter](key, 5.seconds, testActor).withMetrics(metrics("ddata"), system)
+        replicator <- SafeReplicator[IO, GCounter](key, 5.seconds, testActor).withMetrics1(metrics("ddata"), system)
       } yield replicator
 
       val (replicator, _) = resource.allocated.unsafeRunSync()
