@@ -8,10 +8,11 @@ import akka.util.Timeout
 import cats.effect.{Resource, Sync}
 import cats.implicits._
 import cats.{Applicative, Monad}
-import com.evolutiongaming.catshelper.{FromFuture, ToFuture}
+import com.evolutiongaming.catshelper.{FromFuture, MeasureDuration, ToFuture}
 import com.evolutiongaming.cluster.ddata.{ReplicatorError => E}
+import com.evolutiongaming.smetrics
 import com.evolutiongaming.smetrics.MetricsHelper._
-import com.evolutiongaming.smetrics._
+import com.evolutiongaming.smetrics.{MeasureDuration => _, _}
 
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
@@ -314,7 +315,18 @@ object SafeReplicator {
 
   implicit class SafeReplicatorOps[F[_], A <: ReplicatedData](val self: SafeReplicator[F, A]) extends AnyVal {
 
+    @deprecated("Use `withMetrics1` instead", "3.1.0")
     def withMetrics(
+      metrics: Metrics[F],
+      refFactory: ActorRefFactory)(implicit
+      dataMetrics: Metrics.DataMetrics[F, A],
+      F: Sync[F],
+      measureDuration: smetrics.MeasureDuration[F]
+    ): Resource[F, SafeReplicator[F, A]] = {
+      withMetrics1(metrics, refFactory)(dataMetrics, F, measureDuration.toCatsHelper)
+    }
+
+    def withMetrics1(
       metrics: Metrics[F],
       refFactory: ActorRefFactory)(implicit
       dataMetrics: Metrics.DataMetrics[F, A],
