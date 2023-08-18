@@ -5,7 +5,7 @@ object Dependencies {
   val `executor-tools` = "com.evolutiongaming" %% "executor-tools" % "1.0.2"
   val scalatest        = "org.scalatest"       %% "scalatest"      % "3.0.8"
   val `cats-helper`    = "com.evolutiongaming" %% "cats-helper"    % "2.11.0"
-  val smetrics         = "com.evolutiongaming" %% "smetrics"       % "0.4.2"
+  val smetrics         = "com.evolutiongaming" %% "smetrics"       % "0.5.0"
 
   object Cats {
     val core   = "org.typelevel" %% "cats-core"   % "2.9.0"
