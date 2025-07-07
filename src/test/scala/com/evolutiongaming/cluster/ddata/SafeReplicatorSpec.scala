@@ -9,18 +9,19 @@ import com.evolutiongaming.catshelper.MeasureDuration
 import com.evolutiongaming.cluster.ddata.IOSuite._
 import com.evolutiongaming.cluster.ddata.SafeReplicator.Metrics
 import com.evolutiongaming.smetrics.CollectorRegistry
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.util.control.NoStackTrace
 import scala.util.{Failure, Success, Try}
 
-class SafeReplicatorSpec extends WordSpec with ActorSpec with Matchers {
+class SafeReplicatorSpec extends AnyWordSpec with ActorSpec with Matchers {
   import SafeReplicatorSpec._
 
-  private implicit val readConsistency = ReadLocal
-  private implicit val writeConsistency = WriteLocal
+  private implicit val readConsistency: R.ReadConsistency = ReadLocal
+  private implicit val writeConsistency: R.WriteConsistency = WriteLocal
 
   "proxy get" in new Scope {
     val result = replicator.get.unsafeToFuture()
@@ -144,7 +145,7 @@ class SafeReplicatorSpec extends WordSpec with ActorSpec with Matchers {
     val counter = GCounter.empty
     val onChanged = (data: GCounter) => IO { testActor ! data }
     val replicator = {
-      implicit val measureDuration = MeasureDuration.fromClock(Clock[IO])
+      implicit val measureDuration: MeasureDuration[IO] = MeasureDuration.fromClock(Clock[IO])
       val resource = for {
         metrics    <- Metrics.of(CollectorRegistry.empty[IO])
         replicator <- SafeReplicator[IO, GCounter](key, 5.seconds, testActor).withMetrics1(metrics("ddata"), system)

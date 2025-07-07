@@ -260,7 +260,7 @@ object SafeReplicator {
         latencySummary <- latencySummary
         sizeGauge      <- sizeGauge
       } yield {
-        key: String =>
+        (key: String) =>
           new SafeReplicator.Metrics[F] {
 
             def latency(name: String, latency: FiniteDuration) = {
@@ -283,22 +283,22 @@ object SafeReplicator {
     object DataMetrics {
 
       implicit def gCounterDataSize[F[_] : Applicative]: DataMetrics[F, GCounter] = empty
-      implicit def gSetDataSize[F[_] : Applicative, A]: DataMetrics[F, GSet[A]] = size { a: GSet[A] => a.size }
+      implicit def gSetDataSize[F[_] : Applicative, A]: DataMetrics[F, GSet[A]] = size { (a: GSet[A]) => a.size }
 
-      implicit def lwwMapDataSize[F[_] : Applicative, K, V]: DataMetrics[F, LWWMap[K, V]] = size { a: LWWMap[K, V] => a.size }
+      implicit def lwwMapDataSize[F[_] : Applicative, K, V]: DataMetrics[F, LWWMap[K, V]] = size { (a: LWWMap[K, V]) => a.size }
 
-      implicit def orMapDataSize[F[_] : Applicative, K, V <: ReplicatedData]: DataMetrics[F, ORMap[K, V]] = size { a: ORMap[_, _] => a.size }
-      implicit def orMultiMapDataSize[F[_] : Applicative, K, V]: DataMetrics[F, ORMultiMap[K, V]] = size { a: ORMultiMap[K, V] => a.size }
-      implicit def orSetDataSize[F[_] : Applicative, A]: DataMetrics[F, ORSet[A]] = size { a: ORSet[A] => a.size }
+      implicit def orMapDataSize[F[_] : Applicative, K, V <: ReplicatedData]: DataMetrics[F, ORMap[K, V]] = size { (a: ORMap[_, _]) => a.size }
+      implicit def orMultiMapDataSize[F[_] : Applicative, K, V]: DataMetrics[F, ORMultiMap[K, V]] = size { (a: ORMultiMap[K, V]) => a.size }
+      implicit def orSetDataSize[F[_] : Applicative, A]: DataMetrics[F, ORSet[A]] = size { (a: ORSet[A]) => a.size }
 
       implicit def pnCounterDataSize[F[_] : Applicative]: DataMetrics[F, PNCounter] = empty
-      implicit def pnCounterMapDataSize[F[_] : Applicative, A]: DataMetrics[F, PNCounterMap[A]] = size { a: PNCounterMap[A] => a.size }
+      implicit def pnCounterMapDataSize[F[_] : Applicative, A]: DataMetrics[F, PNCounterMap[A]] = size { (a: PNCounterMap[A]) => a.size }
 
       implicit def flagDataSize[F[_] : Applicative]: DataMetrics[F, Flag] = empty
 
       implicit def versionVectorDataSize[F[_] : Applicative]: DataMetrics[F, VersionVector] = empty
       implicit def oneVersionVectorDataSize[F[_] : Applicative]: DataMetrics[F, OneVersionVector] = empty
-      implicit def manyVersionVectorDataSize[F[_] : Applicative]: DataMetrics[F, ManyVersionVector] = size { a: ManyVersionVector => a.versions.size }
+      implicit def manyVersionVectorDataSize[F[_] : Applicative]: DataMetrics[F, ManyVersionVector] = size { (a: ManyVersionVector) => a.versions.size }
 
 
       def empty[F[_] : Applicative, A <: ReplicatedData]: DataMetrics[F, A] = new DataMetrics[F, A] {
