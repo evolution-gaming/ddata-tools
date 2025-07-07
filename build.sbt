@@ -14,7 +14,7 @@ organizationHomepage := Some(url("https://evolution.com"))
 
 scalaVersion := crossScalaVersions.value.head
 
-crossScalaVersions := Seq("2.13.11", "2.12.18", "3.3.6")
+crossScalaVersions := Seq("2.13.11", "3.3.6")
 
 Compile / doc / scalacOptions ++= Seq("-no-link-warnings")
 
