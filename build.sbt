@@ -34,8 +34,6 @@ libraryDependencies ++= Seq(
 
 licenses := Seq(("MIT", url("https://opensource.org/licenses/MIT")))
 
-releaseCrossBuild := true
-
 scalacOptsFailOnWarn := Some(false)
 
 //addCommandAlias("check", "all versionPolicyCheck Compile/doc")
