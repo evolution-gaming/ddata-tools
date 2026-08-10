@@ -11,5 +11,3 @@ jobs:
     with:
       # TODO no sbt-version-policy in this repo, so binary compatibility was never checked
       version_policy_check: false
-      # TODO no sbt-scalafmt in this repo, so formatting was never checked
-      scalafmt_check: false

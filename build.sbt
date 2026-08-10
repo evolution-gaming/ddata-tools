@@ -30,12 +30,14 @@ libraryDependencies ++= Seq(
   `executor-tools`,
   `cats-helper`,
   smetrics,
-  scalatest % Test)
+  scalatest % Test,
+)
 
 licenses := Seq(("MIT", url("https://opensource.org/licenses/MIT")))
 
 scalacOptsFailOnWarn := Some(false)
 
 //addCommandAlias("check", "all versionPolicyCheck Compile/doc")
-addCommandAlias("check", "show version")
+addCommandAlias("check", "+all scalafmtCheckRepo Compile/doc")
+addCommandAlias("fmt", "+scalafmtRepo")
 addCommandAlias("build", "+all compile test")

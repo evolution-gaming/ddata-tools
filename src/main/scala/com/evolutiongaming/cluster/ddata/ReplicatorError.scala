@@ -5,7 +5,7 @@ import cats.implicits._
 import scala.util.control.NoStackTrace
 
 sealed abstract class ReplicatorError(msg: Option[String], cause: Option[Throwable])
-  extends RuntimeException(msg.orNull, cause.orNull) with NoStackTrace
+extends RuntimeException(msg.orNull, cause.orNull) with NoStackTrace
 
 object ReplicatorError {
 
@@ -22,7 +22,6 @@ object ReplicatorError {
   def modifyFailure(msg: String, cause: Throwable): ReplicatorError = ModifyFailure(msg, cause)
 
   def unknown(msg: String): ReplicatorError = Unknown(msg)
-
 
   case object DataDeleted extends ReplicatorError(none, none)
 

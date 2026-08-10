@@ -2,8 +2,8 @@ package com.evolutiongaming.cluster.ddata
 
 import akka.cluster.ddata.Replicator.{ReadLocal, WriteLocal}
 import akka.cluster.ddata.{GCounter, GCounterKey, Replicator => R}
-import cats.effect.{Clock, IO}
 import cats.effect.unsafe.implicits.global
+import cats.effect.{Clock, IO}
 import cats.implicits._
 import com.evolutiongaming.catshelper.MeasureDuration
 import com.evolutiongaming.cluster.ddata.IOSuite._
@@ -147,7 +147,7 @@ class SafeReplicatorSpec extends AnyWordSpec with ActorSpec with Matchers {
     val replicator = {
       implicit val measureDuration: MeasureDuration[IO] = MeasureDuration.fromClock(Clock[IO])
       val resource = for {
-        metrics    <- Metrics.of(CollectorRegistry.empty[IO])
+        metrics <- Metrics.of(CollectorRegistry.empty[IO])
         replicator <- SafeReplicator[IO, GCounter](key, 5.seconds, testActor).withMetrics1(metrics("ddata"), system)
       } yield replicator
 
