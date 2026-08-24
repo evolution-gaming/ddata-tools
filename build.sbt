@@ -1,4 +1,4 @@
-import Dependencies._
+import Dependencies.*
 
 name := "ddata-tools"
 
@@ -37,7 +37,8 @@ licenses := Seq(("MIT", uri("https://opensource.org/licenses/MIT")))
 
 scalacOptsFailOnWarn := Some(false)
 
-//addCommandAlias("check", "all versionPolicyCheck Compile/doc")
-addCommandAlias("check", "+all scalafmtCheckRepo Compile/doc")
-addCommandAlias("fmt", "+scalafmtRepo")
+versionPolicyIntention := Compatibility.BinaryCompatible
+
+addCommandAlias("check", "+all versionPolicyCheck scalafmtCheckRepo Compile/doc")
+addCommandAlias("fmt", "scalafmtRepo")
 addCommandAlias("build", "+all compile testFull")
