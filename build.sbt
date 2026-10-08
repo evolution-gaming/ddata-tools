@@ -39,10 +39,6 @@ scalacOptsFailOnWarn := Some(false)
 
 versionPolicyIntention := Compatibility.BinaryCompatible
 
-// smetrics 3.0.0 only adds the `Info` metric, existing API is binary compatible with 2.x
-// TODO remove after next release
-versionPolicyIgnored += "com.evolutiongaming" %% "smetrics"
-
 addCommandAlias("check", "+all versionPolicyCheck scalafmtCheckRepo Compile/doc")
 addCommandAlias("fmt", "scalafmtRepo")
 addCommandAlias("build", "+all compile testFull")
